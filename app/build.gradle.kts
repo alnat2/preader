@@ -24,9 +24,10 @@ android {
 
     buildTypes {
         release {
-            optimization {
-                enable = false
-            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -36,6 +37,10 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+base {
+    archivesName.set("preader")
 }
 
 dependencies {
