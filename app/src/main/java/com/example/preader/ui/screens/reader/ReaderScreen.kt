@@ -188,6 +188,13 @@ fun ReaderScreen(
                                 LocalFileResourceHandler(file)
                             )
                             .build()
+                    } else {
+                        assetLoader = WebViewAssetLoader.Builder()
+                            .addPathHandler(
+                                "/local/",
+                                LocalFileResourceHandler(file.parentFile!!)
+                            )
+                            .build()
                     }
 
                     webViewClient = object : WebViewClient() {
@@ -195,6 +202,18 @@ fun ReaderScreen(
                             view: WebView,
                             request: WebResourceRequest
                         ): WebResourceResponse? {
+                            val urlStr = request.url.toString()
+                            
+                            // Force text/html for the main file to prevent raw source code rendering
+                            if (page!!.sourceType == SourceType.HtmlFile && urlStr.contains(android.net.Uri.encode(file.name))) {
+                                try {
+                                    val stream = java.io.FileInputStream(file)
+                                    return WebResourceResponse("text/html", "UTF-8", stream)
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                            
                             return assetLoader?.shouldInterceptRequest(request.url) 
                                 ?: super.shouldInterceptRequest(view, request)
                         }
@@ -238,7 +257,8 @@ fun ReaderScreen(
 
                     // Load URL
                     if (page!!.sourceType == SourceType.HtmlFile) {
-                        loadUrl("file://${file.absolutePath}")
+                        val encodedName = android.net.Uri.encode(file.name)
+                        loadUrl("https://appassets.androidplatform.net/local/$encodedName")
                     } else {
                         val htmlFiles = file.listFiles()?.filter { 
                             it.isFile && (it.name.endsWith(".html", ignoreCase = true) || it.name.endsWith(".htm", ignoreCase = true)) 

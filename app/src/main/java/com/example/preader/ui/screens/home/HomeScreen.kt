@@ -1,10 +1,8 @@
 package com.example.preader.ui.screens.home
 
-import android.content.Intent
+import android.content.Context
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -26,12 +24,54 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavController
+import androidx.documentfile.provider.DocumentFile
 import com.example.preader.data.SettingsRepository
 import com.example.preader.domain.ReadingPage
 import com.example.preader.domain.SourceType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import java.util.UUID
+import android.widget.Toast
+
+suspend fun copyUriToLocalCache(context: Context, uri: Uri): File? = withContext(Dispatchers.IO) {
+    try {
+        val documentFile = DocumentFile.fromSingleUri(context, uri)
+        var fileName = documentFile?.name ?: "imported_${System.currentTimeMillis()}.html"
+        if (!fileName.contains(".")) {
+            fileName += ".html"
+        }
+        
+        // Ensure only HTML files are allowed
+        if (!fileName.endsWith(".html", true) && !fileName.endsWith(".htm", true)) {
+            return@withContext null
+        }
+        
+        val importedDir = File(context.filesDir, "imported_pages").apply { mkdirs() }
+        val localFile = File(importedDir, fileName)
+        
+        val inputStream = context.contentResolver.openInputStream(uri)
+        if (inputStream == null) return@withContext null
+        
+        inputStream.use { input ->
+            FileOutputStream(localFile).use { output ->
+                input.copyTo(output)
+            }
+        }
+        
+        if (localFile.length() == 0L) {
+            localFile.delete()
+            return@withContext null
+        }
+        
+        localFile
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,8 +79,7 @@ fun HomeScreen(
     settingsRepository: SettingsRepository,
     deletedPageIdFromReader: String? = null,
     onDeletedPageHandled: () -> Unit = {},
-    onNavigateToReader: (String) -> Unit,
-    onNavigateToPicker: () -> Unit
+    onNavigateToReader: (String) -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -93,29 +132,34 @@ fun HomeScreen(
 
     val visiblePages = pages.filter { it.id !in pendingDeletions }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
-            onNavigateToPicker()
+    val documentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            coroutineScope.launch {
+                val localFile = copyUriToLocalCache(context, uri)
+                if (localFile != null) {
+                    val pageId = UUID.randomUUID().toString()
+                    val newPage = ReadingPage(
+                        id = pageId,
+                        displayName = localFile.name,
+                        sourcePath = localFile.absolutePath,
+                        sourceType = SourceType.HtmlFile,
+                        firstOpenedAt = System.currentTimeMillis(),
+                        positionRatio = 0.0,
+                        progressPercent = 0
+                    )
+                    settingsRepository.addOrUpdatePage(newPage)
+                    onNavigateToReader(pageId)
+                } else {
+                    Toast.makeText(context, "Unsupported file. Please select an HTML file.", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
     fun handleAddClick() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (Environment.isExternalStorageManager()) {
-                onNavigateToPicker()
-            } else {
-                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                val uri = Uri.fromParts("package", context.packageName, null)
-                intent.data = uri
-                permissionLauncher.launch(intent)
-            }
-        } else {
-            // For Android < 11, we would need standard READ_EXTERNAL_STORAGE request.
-            // For simplicity in MVP assuming Android 11+
-            onNavigateToPicker()
-        }
+        documentLauncher.launch("text/html")
     }
 
     Scaffold(
@@ -211,7 +255,7 @@ fun HomeScreen(
                 }
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "Supported formats include .html, .htm, and folders of saved pages.",
+                    text = "Supported formats include .html and .htm files.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
