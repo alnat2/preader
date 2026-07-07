@@ -16,8 +16,11 @@ android {
         applicationId = "com.example.preader"
         minSdk = 34
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        val ciVersionCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 1
+        val ciVersionName = project.findProperty("versionName")?.toString() ?: "1.0"
+
+        versionCode = ciVersionCode
+        versionName = ciVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

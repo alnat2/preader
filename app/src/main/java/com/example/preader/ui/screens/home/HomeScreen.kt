@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -343,45 +345,73 @@ fun HomeScreen(
             )
         }
 
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.TopCenter)
-        ) { data ->
-            var localCountdown by remember(data) { mutableIntStateOf(10) }
-            
-            LaunchedEffect(data) {
-                localCountdown = 10
-                while(localCountdown > 0) {
-                    kotlinx.coroutines.delay(1000)
-                    localCountdown--
-                }
-                data.dismiss()
-            }
+        val currentData = snackbarHostState.currentSnackbarData
+        var isUndo by remember { mutableStateOf(false) }
+        var cachedData by remember { mutableStateOf<SnackbarData?>(null) }
 
-            Snackbar(
-                modifier = Modifier.padding(16.dp),
-                containerColor = MaterialTheme.colorScheme.inverseSurface,
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+        LaunchedEffect(currentData) {
+            if (currentData != null) {
+                cachedData = currentData
+                isUndo = false
+            }
+        }
+
+        AnimatedVisibility(
+            visible = currentData != null,
+            modifier = Modifier.align(Alignment.TopCenter),
+            enter = fadeIn(animationSpec = tween(300)),
+            exit = if (isUndo) {
+                slideOutVertically(
+                    targetOffsetY = { -it },
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) + fadeOut()
+            } else {
+                fadeOut(animationSpec = tween(500))
+            }
+        ) {
+            cachedData?.let { data ->
+                var localCountdown by remember(data) { mutableIntStateOf(10) }
+                
+                LaunchedEffect(data) {
+                    localCountdown = 10
+                    while(localCountdown > 0) {
+                        kotlinx.coroutines.delay(1000)
+                        localCountdown--
+                    }
+                    data.dismiss()
+                }
+
+                Snackbar(
+                    modifier = Modifier.padding(16.dp),
+                    containerColor = MaterialTheme.colorScheme.inverseSurface,
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(
-                        text = "Page will be deleted in $localCountdown sec",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = data.visuals.actionLabel ?: "",
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .clickable { data.performAction() }
-                            .padding(8.dp)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Page will be deleted in $localCountdown sec",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = data.visuals.actionLabel ?: "",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clickable {
+                                    isUndo = true
+                                    data.performAction()
+                                }
+                                .padding(8.dp)
+                        )
+                    }
                 }
             }
         }
