@@ -359,7 +359,7 @@ fun HomeScreen(
 
             Snackbar(
                 modifier = Modifier.padding(16.dp),
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = MaterialTheme.colorScheme.inverseSurface,
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Row(
