@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.background
@@ -443,7 +444,8 @@ fun PageItem(
                     Box(
                         modifier = Modifier
                             .size(44.dp)
-                            .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer)
                             .clickable(onClick = onReset),
                         contentAlignment = Alignment.Center
                     ) {
@@ -455,11 +457,12 @@ fun PageItem(
                         )
                     }
                     
-                    // Delete/Close button (mocked)
+                    // Delete/Close button
                     Box(
                         modifier = Modifier
                             .size(44.dp)
-                            .border(2.dp, MaterialTheme.colorScheme.error, RoundedCornerShape(16.dp))
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(MaterialTheme.colorScheme.errorContainer)
                             .clickable(onClick = onDelete),
                         contentAlignment = Alignment.Center
                     ) {

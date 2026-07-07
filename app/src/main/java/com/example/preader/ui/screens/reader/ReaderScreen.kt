@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -112,7 +113,8 @@ fun ReaderScreen(
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
-                                .border(2.dp, MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer)
                                 .clickable {
                                     coroutineScope.launch {
                                         settingsRepository.resetProgress(pageId)
@@ -135,7 +137,8 @@ fun ReaderScreen(
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
-                                .border(2.dp, MaterialTheme.colorScheme.error, androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(MaterialTheme.colorScheme.errorContainer)
                                 .clickable {
                                     onDeletePage(pageId)
                                 },
